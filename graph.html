@@ -1,0 +1,213 @@
+<script
+  src="https://code.jquery.com/jquery-2.2.4.min.js"
+  integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+  crossorigin="anonymous"></script>
+<canvas id="canvas" width="400" height="400" style="background:green;"></canvas>
+<br/>
+<div>minM(int):<br/><input id="minM"></input></div>
+<div>maxM(int):<br/><input id="maxM"></input></div>
+<div>minWghtNofM(x times):<br/><input id="minWghtNofM"></input></div>
+<div>maxWghtNofM(x times):<br/><input id="maxWghtNofM"></input></div>
+<div>radiusV(px):<br/><input id="radiusV"></input></div>
+<input value="generate" type="button" onclick="javascript:ddo()"></input>
+<br/>
+<textarea id="V" rows="25" cols="35"></textarea>
+<textarea id="LE" rows="25" cols="35"></textarea>
+</div>
+<script>
+(function(){
+	$("textarea").css({height:"inherit",width:"inherit",display:"inline-block"});
+	var o = getOptns();
+	$("#minM").val(o.minM);
+	$("#maxM").val(o.maxM);
+	$("#minWghtNofM").val(o.minWghtNofM);
+	$("#maxWghtNofM").val(o.maxWghtNofM);
+	$("#radiusV").val(o.radiusV);
+})();
+// o->o->o
+// 	->o->o^
+// 	   ->o
+//
+function getOptns(){
+	return {
+		minM: 15,
+		maxM: 25,
+		minWghtNofM: .7,
+		maxWghtNofM: 1.4,
+		radiusV: 15,
+//
+		newEforLEChk: 100,
+	}; 
+}
+var V, m, optns, step = 100;	// random pts
+function popAndShuffleV(){	// read the tin
+	optns = {
+		minM: parseFloat($("#minM").val()),
+		maxM: parseFloat($("#maxM").val()),
+		minWghtNofM: parseFloat($("#minWghtNofM").val()),
+		maxWghtNofM: parseFloat($("#maxWghtNofM").val()),
+		radiusV: parseFloat($("#radiusV").val()),
+		newEforLEChk: getOptns().newEforLEChk,
+	};
+	m = Math.floor((Math.random() * (optns.maxM - optns.minM) + optns.minM)); // random
+	V = [];
+	var x,y;
+    for (var i = 0; i < m; i++) {	// stolen sorta 
+		x = randUpTo(300);
+		y = randUpTo(300);
+		V.push({x:x,y:y,id:i});
+	}
+    for (var i = m; i; i--) {	// stolen sorta 
+        j = randUpTo(i);
+        x = V[i-1];
+        V[i-1] = V[j];
+        V[j] = x;
+    }
+}
+function getV(){	// map is nift and runs the callback passed on all items in arr
+	return V.map(function(item, index){
+		item.id = index;	//
+		return "ID\t"+item.id+"\tX\t"+item.x+"\tY\t"+item.y;	// bog standard quik format
+	}).join("\n");	// method chain a join
+}
+//
+// adjacency list below
+// fk it, im lazy, edges will auto generate at first
+// shuffle means it'll be novel at least a few times
+// this is mock up, anyway
+var n,	// size of E 
+LE; // edge list
+function populateLE(){
+	var u,v;	// we'll use i as k
+	LE = [];
+	n = Math.floor((Math.random() * (optns.maxWghtNofM - optns.minWghtNofM) + optns.minWghtNofM) * m);
+	for(var i = 0; i < n; i++){
+		LE[i] = [];
+	}
+	for(var i = 0; i < n; i++){
+		u = randUpTo(m);
+		v = randUpTo(m);
+		for(var zz = 0; zz < optns.newEforLEChk; zz++){
+			if(!(u == v || !LE[u] || LE[u].indexOf(v) > -1)){
+				var t = LE[u];
+				t.push(v);
+				LE[u] = t;
+				break;
+			}
+			v = randUpTo(m);
+		}
+	}
+}
+function getLE(){
+	return LE.map(function(item, index){
+		if(item.length > 0){
+			return "V\t"+index+"\tETo:\t"+item.join(", ")+"\n";	// bog standard quik format
+		}
+	});	// method chain a join
+}
+function mapVELE(){
+	var canvas = document.getElementById('canvas');
+	if (canvas.getContext){
+		var ctx = canvas.getContext('2d');
+		ctx.clearRect(-25, -25, canvas.width, canvas.height);
+		ctx.setTransform(1, 0, 0, 1, 25, 25);
+		ctx.globalCompositeOperation='destination-over';
+		V.map(function(item, index){
+			if(index < step){
+				ctx.fillStyle = "rgb(129,215,66)";
+				ctx.fillText(index,item.x,item.y);
+			}
+		});
+		V.map(function(item, index){
+			if(index < step){
+				ctx.strokeStyle = "black";
+				ctx.fillStyle = "black";
+				ctx.beginPath();
+				ctx.arc(item.x, item.y, optns.radiusV, 0, 2 * Math.PI, false);
+				ctx.fill();
+				ctx.stroke();
+			}
+		});
+		LE.map(function(item, index){
+			if(index < step){
+				ctx.strokeStyle = "white";
+				item.map(function(itemChld, indexChld){
+					if(!(!LE[itemChld] || LE[itemChld].indexOf(index) < 0)){
+						ctx.strokeStyle = "yellow";
+					}
+					ctx.moveTo(V[index].x,V[index].y);
+					ctx.lineTo(V[itemChld].x,V[itemChld].y);
+					ctx.stroke();
+				});
+			}
+		});
+	}
+}
+function ddo(){
+	popAndShuffleV();
+	$("#V").val(">>>>>V, nodes, vertices<<<<<\n"+getV());
+	populateLE();
+	$("#LE").val(">>>>>LE, adjact Vs, edge from to<<<<<\n"+getLE());
+	mapVELE();
+	//step = 0;
+	//tDdo();
+}
+ddo();
+//tDdo();
+function tDdo(){
+	setTimeout(function(){step++;mapVELE();tDdo();}, 1000);
+}
+//
+//
+var gl; // A global variable for the WebGL context
+function start() {
+  var canvas = document.getElementById("canvas");
+  // Initialize the GL context
+  gl = initWebGL(canvas);
+  // Only continue if WebGL is available and working
+  if (!gl) {
+    return;
+  }
+  // Set clear color to black, fully opaque
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  // Enable depth testing
+  gl.enable(gl.DEPTH_TEST);
+  // Near things obscure far things
+  gl.depthFunc(gl.LEQUAL);
+  // Clear the color as well as the depth buffer.
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+}
+function initWebGL(canvas) {
+  gl = null;
+  // Try to grab the standard context. If it fails, fallback to experimental.
+  gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+  // If we don't have a GL context, give up now
+  if (!gl) {
+    alert("Unable to initialize WebGL. Your browser may not support it.");
+  }
+  return gl;
+}
+// expects 2 vertices, from to
+function getLengthVtoV(a, b){
+	var thr = LE[a.id].indexOf(b.id);
+	if(thr > -1){
+		return Math.abs(Math.sqrt((b.x - a.x) + (b.y - a.y)));
+	}
+	return 0;
+}
+function getAngleVertxVV(vVertx, va, vb){
+	if(LE[vVertx].indexOf(va) && LE[vVertx].indexOf(vb)){
+		getLengthVtoV(vVertx, va);
+		getLengthVtoV(va, vb);
+		getLengthVtoV(vb, vVertx);
+		return lawArcCos(vVertx, va, vb)
+	}
+	return 0;
+}
+function randUpTo(d){
+	return Math.floor(Math.random() * d);
+}
+function lawArcCos(adj1, adj2, hyp){
+	return Math.acos((Math.pow(hyp, 2) - (Math.pow(adj1, 2) + Math.pow(adj2, 2))) / (2 * adj1 * adj2));
+}
+</script>
